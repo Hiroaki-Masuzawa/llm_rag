@@ -1,0 +1,4 @@
+https://github.com/IRSL-tut/irsl_choreonoid_ros.git
+https://github.com/IRSL-tut/irsl_transcriptions.git
+https://github.com/IRSL-tut/irsl_instance_segmentation.git
+https://github.com/IRSL-tut/irsl_choreonoid.git

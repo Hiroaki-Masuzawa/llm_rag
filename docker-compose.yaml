@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    environment: # 追加
+        NVIDIA_VISIBLE_DEVICES: all # 追加
+        NVIDIA_DRIVER_CAPABILITIES: all # 追加
+    deploy:
+      resources:
+        reservations:
+          devices:
+           - driver: nvidia
+             capabilities: [utility, compute, video]  
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: openwebui
+    ports:
+      - "5955:8080"
+    environment:
+      - OLLAMA_API_BASE_URL=http://ollama:11434  # ←これはOllama用
+      - OPENAI_API_BASE_URL=http://rag_api:8000/v1  # ←RAG APIを使わせる
+      - DEFAULT_OPENAI_MODEL=rag-local
+    depends_on:
+      - ollama
+      - rag_api
+    volumes:
+      - openwebui_data:/app/backend/data
+    restart: unless-stopped
+
+  rag_api:
+    build:
+      context: ./rag
+    container_name: rag_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./rag:/app
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  openwebui_data:
