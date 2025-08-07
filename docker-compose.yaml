@@ -9,9 +9,8 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     restart: unless-stopped
-    environment: # 追加
-        NVIDIA_VISIBLE_DEVICES: all # 追加
-        NVIDIA_DRIVER_CAPABILITIES: all # 追加
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434     # 追加: 全インターフェースで受け付け
     deploy:
       resources:
         reservations:
@@ -26,10 +25,13 @@ services:
     environment:
       - OLLAMA_API_BASE_URL=http://ollama:11434  # ←これはOllama用
       - OPENAI_API_BASE_URL=http://rag_api:8000/v1  # ←RAG APIを使わせる
+      - OLLAMA_BASE_URL=http://ollama:11434      # 追加: Ollama に接続するために必須
       - DEFAULT_OPENAI_MODEL=rag-local
     depends_on:
       - ollama
       - rag_api
+    extra_hosts:
+      - "host.docker.internal:host-gateway"     # 追加：必要時にホストを解決可能にする
     volumes:
       - openwebui_data:/app/backend/data
     restart: unless-stopped
@@ -45,6 +47,12 @@ services:
     depends_on:
       - ollama
     restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
 
 volumes:
   ollama_data:

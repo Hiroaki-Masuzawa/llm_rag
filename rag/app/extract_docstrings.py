@@ -1,6 +1,18 @@
 import ast
 import re
 import os
+import logging
+
+# ログ設定（初回のみ設定すればOK）
+logging.basicConfig(
+    level=logging.INFO,  # INFO, DEBUG などに切り替え可能
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler(),  # コンソールに出力
+        logging.FileHandler("extract.log", encoding="utf-8")  # ファイルにも出力
+    ]
+)
+
 
 def extract_definitions_from_file(file_path):
     ext = os.path.splitext(file_path)[1]
@@ -13,37 +25,44 @@ def extract_definitions_from_file(file_path):
         print(f"[INFO] Unsupported file type: {file_path}")
         return []
 
-# === Python用 ===
 def extract_python_definitions(file_path):
+    logging.info(f"🔍 Processing Python file: {file_path}")
+    
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             source = f.read()
             tree = ast.parse(source)
     except Exception as e:
-        print(f"[WARN] Failed to parse Python file {file_path}: {e}")
+        logging.warning(f"[WARN] Failed to parse Python file {file_path}: {e}")
         return []
 
     items = []
 
-    for node in ast.walk(tree):
+    def visit(node, parents=[]):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             try:
-                name = node.name
+                name = ".".join([p.name for p in parents] + [node.name])
                 docstring = ast.get_docstring(node)
                 source_code = ast.get_source_segment(source, node)
 
                 items.append({
                     "name": name,
-                    "type": type(node).__name__,  # FunctionDef / ClassDef
+                    "type": type(node).__name__,
                     "docstring": docstring,
                     "source_code": source_code,
                     "file_path": file_path,
                     "language": "python",
                 })
-            except Exception as e:
-                print(f"[WARN] Failed to process Python node in {file_path}: {e}")
-                continue
 
+                logging.info(f"✅ Extracted {type(node).__name__}: {name}")
+            except Exception as e:
+                logging.warning(f"[WARN] Failed to process node {getattr(node, 'name', 'unknown')} in {file_path}: {e}")
+
+        for child in ast.iter_child_nodes(node):
+            visit(child, parents + [node] if isinstance(node, ast.ClassDef) else parents)
+
+    visit(tree)
+    logging.info(f"📄 {len(items)} definitions extracted from {file_path}")
     return items
 
 # === C++用 ===

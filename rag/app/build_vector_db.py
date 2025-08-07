@@ -25,15 +25,19 @@ def build_db():
     clone_repos()
     raw_docs = extract_all_docstrings()
 
-    # dict → Document に変換
     documents = to_documents(raw_docs)
-
-    # Document をチャンク分割
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
     split_docs = splitter.split_documents(documents)
 
+    # GPU 対応埋め込みモデル（高速）
+    embedding = HuggingFaceEmbeddings(
+        model_name="intfloat/multilingual-e5-base",
+        model_kwargs={"device": "cuda"}  # ← GPU を使う
+        # model_name="microsoft/codebert-base",
+        # model_kwargs={"device": "cuda"}  # ← GPU を使う
+    )
+
     # 埋め込み & 保存
-    embedding = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-base")
     db = Chroma.from_documents(split_docs, embedding, persist_directory="chroma_db")
     db.persist()
     print("✅ Vector DB built.")
